@@ -1,0 +1,30 @@
+{
+  "name": "bitsky-hello-retailer-python",
+  "description": "A retailer service to crawl blogs from https://exampleblog.bitsky.ai/, implemented by Python",
+  "keywords": [
+    "web crawling",
+    "web scraping",
+    "crawl",
+    "scrape",
+    "automation",
+    "python"
+  ],
+  "website": "https://www.bitsky.ai",
+  "logo": "https://raw.githubusercontent.com/bitskyai/bitsky-desktop-app/master/assets/icons/bitsky512.png",
+  "env": {
+    "BITSKY_BASE_URL": {
+      "description": "Your BitSky application's base url. Example: https://bitskyai.herokuapp.com",
+      "required": false
+    },
+    "GLOBAL_ID": {
+      "description": "Global ID of the retailer service you want to connect. Example: 6e56474d-0c75-4125-b5a8-27b0ccf71390",
+      "required": false
+    },
+    "LOG_LEVEL": {
+      "description": "Winston logging level. Default is `info`, find detail from https://github.com/winstonjs/winston#logging-levels",
+      "value": "info",
+      "required": false
+    }
+  },
+  "success_url": "/"
+}
