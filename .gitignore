@@ -130,3 +130,6 @@ dmypy.json
 
 # visual studio code
 .vscode
+
+# ignore generate data 
+static/*.csv
