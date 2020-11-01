@@ -4,11 +4,14 @@ import json
 import csv
 # python build-in module: os.environ. Get environment variable
 from os import environ
+# Construct a full (“absolute”) URL by combining a “base URL” (base) with another URL (url)
+# https://docs.python.org/3/library/urllib.parse.html#module-urllib.parse
+from urllib.parse import urljoin
 ################################################################
 # Third part libraries
 # `flash`: The Python micro framework for building web applications
 # https://flask.palletsprojects.com/en/1.1.x/
-from flask import Flask, request
+from flask import Flask, request, render_template
 # `requests`: HTTP for Humans
 # https://requests.readthedocs.io/en/master/
 import requests
@@ -20,18 +23,26 @@ from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
+# You MUST change to correct BitSKy Base URL
 BITSKY_BASE_URL = environ.get('BITSKY_BASE_URL') or 'http://localhost:9099'
+# You MUST change to correct Retailer Configuration Global ID
 GLOBAL_ID = environ.get('GLOBAL_ID') or '0a88925d-418f-4fdf-8fe5-4176669f6938'
 BLOGS_CSV_PATH = './static/blogs.csv'
 FIELD_NAMES = ['title', 'author', 'date', 'content', 'url']
 
 
+#========================================================================
+# You can read https://docs.bitsky.ai/tutorials/crawl-example-blog to get detail understand what is the requirement of this example
+#========================================================================
+
+# Add Tasks to BitSky
+# Doc - https://docs.bitsky.ai/api/bitsky-restful-api
 def sendToBitSky(tasks):
-    # res = requests.post(f"{BITSKY_BASE_URL}/apis/tasks", data=json.dumps(tasks))
-    res = requests.post(f"{BITSKY_BASE_URL}/apis/tasks", json=tasks)
+    bitsky_url = urljoin(BITSKY_BASE_URL, '/apis/tasks')
+    res = requests.post(bitsky_url, json=tasks)
     return json.dumps(res.json())
 
-
+# Write crawled blog to disk as csv format
 def writeToBlogCSV(blogs, blog_csv_path=BLOGS_CSV_PATH, fieldnames=FIELD_NAMES, header=False):
     with open(blog_csv_path, mode='a') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -43,12 +54,14 @@ def writeToBlogCSV(blogs, blog_csv_path=BLOGS_CSV_PATH, fieldnames=FIELD_NAMES, 
 # init blogs.csv with header
 writeToBlogCSV(blogs=[], header=True)
 
-
+# Implement health check RESTFul API
+# Doc - https://docs.bitsky.ai/api/retailer-restful-api#health-check
 @app.route('/health', methods=['GET'])
 def health():
     return 'running'
 
-
+# Implement Receive Tasks RESTFul API
+# Doc - https://docs.bitsky.ai/api/retailer-restful-api#receive-tasks
 @app.route('/apis/tasks', methods=["POST"])
 def parse():
     returnTasks = request.get_json()
@@ -114,7 +127,8 @@ def parse():
     writeToBlogCSV(crawledBlogs)
     return 'successful'
 
-
+# Implement Initial Tasks RESTFul API
+# Doc - https://docs.bitsky.ai/api/retailer-restful-api#initial-tasks-optional
 @app.route('/apis/tasks/trigger', methods=['GET'])
 def trigger():
     return sendToBitSky([{
@@ -132,3 +146,18 @@ def trigger():
             '''
         }
     }])
+
+# Implement a index page, help user to know trigger function and crawled data
+@app.route('/', methods=['GET'])
+def index():
+    indexData = {
+        'title': "Retailer Service",
+        'description': 'A retailer server to crawl data from website',
+        'triggerURL': "/apis/tasks/trigger",
+        'crawledData': '/static/blogs.csv',
+        'githubURL': "https://github.com/bitskyai",
+        'homeURL': "https://www.bitsky.ai",
+        'docURL': "https://docs.bitsky.ai",
+        'copyright': "© 2020 BitSky.ai"
+    }
+    return render_template("index.html", indexData=indexData)

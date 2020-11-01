@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en" class="h-100">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <meta name="description" content="" />
+    <meta name="author" content="BitSky" />
+    <title>{{ indexData.title }}</title>
+
+    <!-- Bootstrap core CSS -->
+    <link
+      href="/static/vendors/bootstrap/4.5.0/css/bootstrap.css"
+      rel="stylesheet"
+    />
+
+    <style>
+      .bd-placeholder-img {
+        font-size: 1.125rem;
+        text-anchor: middle;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+
+      @media (min-width: 768px) {
+        .bd-placeholder-img-lg {
+          font-size: 3.5rem;
+        }
+      }
+    </style>
+    <!-- Custom styles for this template -->
+    <link href="/static/app.css" rel="stylesheet" />
+  </head>
+  <body class="bg-light">
+    <div class="container">
+      <div class="py-5 text-center">
+        <a href="{{ indexData.homeURL }}" target="_blank">
+          <img
+            class="mb-4"
+            src="/static/icons/icon-512x512.png"
+            alt=""
+            width="100"
+            height="100"
+          />
+        </a>
+        <h2>
+          <span class="badge badge-info">{{ indexData.title }}</span>
+        </h2>
+        <p class="lead">{{ indexData.description }}</p>
+      </div>
+
+      <div class="row">
+        <div class="col-md-12">
+          <h4 class="d-flex justify-content-between align-items-center mb-3">
+            <span class="text-muted">Index</span>
+          </h4>
+          <ul class="list-group mb-3">
+            <li
+              class="list-group-item d-flex justify-content-between lh-condensed"
+            >
+              <div>
+                <h6>Trigger</h6>
+                <p>
+                  Add init tasks that will trigger starting data crawl.
+                  <button type="button" class="btn btn-primary btn-sm">
+                    <a
+                      href="{{ indexData.triggerURL }}"
+                      style="color: white"
+                      target="_blank"
+                      >Add init tasks</a
+                    >
+                  </button>
+                </p>
+              </div>
+            </li>
+            <li
+              class="list-group-item d-flex justify-content-between lh-condensed"
+            >
+              <div>
+                <h6>Crawled Data</h6>
+                <p>
+                  The data that was crawled and saved on disk.
+                  <button type="button" class="btn btn-primary btn-sm">
+                    <a
+                      href="{{ indexData.crawledData }}"
+                      style="color: white"
+                      target="_blank"
+                      >View Collected Data</a
+                    >
+                  </button>
+                </p>
+                <p>
+                  <b>Data file path:</b>
+                  <code style="font-size: 87.5%; color: #e83e8c"
+                    >{{ indexData.crawledData }}</code
+                  >
+                </p>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <footer class="my-5 pt-5 text-muted text-center text-small">
+        <p class="mb-1">{{ indexData.copyright }}</p>
+        <ul class="list-inline">
+          <li class="list-inline-item">
+            <a href="{{ indexData.docURL }}" target="_blank">Documents</a>
+          </li>
+          <li class="list-inline-item">
+            <a href="{{ indexData.githubURL }}" target="_blank">Github</a>
+          </li>
+        </ul>
+      </footer>
+    </div>
+    <script src="/static/vendors/jquery-3.5.1.slim.js"></script>
+    <script src="/static/vendors/bootstrap/4.5.0/js/bootstrap.bundle.js"></script>
+  </body>
+</html>
