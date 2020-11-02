@@ -24,10 +24,13 @@ from bs4 import BeautifulSoup
 app = Flask(__name__)
 
 # You MUST change to correct BitSKy Base URL
+# If you are using BitSky Desktop Application, check https://docs.bitsky.ai/how-tos/how-to-get-bitsky-port-number-in-desktop-application
 BITSKY_BASE_URL = environ.get('BITSKY_BASE_URL') or 'http://localhost:9099'
 # You MUST change to correct Retailer Configuration Global ID
-GLOBAL_ID = environ.get('GLOBAL_ID') or '0a88925d-418f-4fdf-8fe5-4176669f6938'
+GLOBAL_ID = environ.get('GLOBAL_ID') or 'bf9f0118-8456-4f05-b6a6-bcf747acb5f8'
+# path of crawled blogs
 BLOGS_CSV_PATH = './static/blogs.csv'
+# crawled blog fileds
 FIELD_NAMES = ['title', 'author', 'date', 'content', 'url']
 
 
@@ -54,55 +57,94 @@ def writeToBlogCSV(blogs, blog_csv_path=BLOGS_CSV_PATH, fieldnames=FIELD_NAMES, 
 # init blogs.csv with header
 writeToBlogCSV(blogs=[], header=True)
 
-# Implement health check RESTFul API
-# Doc - https://docs.bitsky.ai/api/retailer-restful-api#health-check
-@app.route('/health', methods=['GET'])
-def health():
-    return 'running'
+# Implement Initial Tasks RESTFul API
+# Doc - https://docs.bitsky.ai/api/retailer-restful-api#initial-tasks-optional
+@app.route('/apis/tasks/trigger', methods=['GET'])
+def trigger():
+    return sendToBitSky([{
+        # Target website URL
+        'url': "http://exampleblog.bitsky.ai/",
+        # Priority of this task. This is useful if your tasks need to be executed by order. `1` is highest priority
+        'priority': 1,
+        'retailer': {
+            'globalId': GLOBAL_ID
+        },
+        # Additional metadata for this task, you should add it based your requirement. `script` is preserved, it only used for pass JavaScript Code String
+        # In this example, I use `type` to distinguish different page - `bloglist` or `blog`. 
+        # If it is `bloglist` then get all blog links and add new tasks to continues crawl those blogs, otherwise save blog to JSON
+        # 
+        # In this example, I let page to wait 5 second, this isn't necessary, only used for show you how to execute JavaScript Code. 
+        # `script` is useful to crawl single page application or you need to interact with page. And only `Headless Producer` can execute tasks have script
+        # `script` is the JavaScript Code you want to execute, you need to convert your function to string. Normally you can use `functionName.toString()`
+        'metadata': {
+            'type': "bloglist",
+            # Check more detail https://docs.bitsky.ai/how-tos/how-to-execute-javascript-in-browser
+            'script': '''
+                async function customFunction() {
+                    await $$page.waitFor(5 * 1000);
+                }
+            '''
+        }
+    }])
 
 # Implement Receive Tasks RESTFul API
 # Doc - https://docs.bitsky.ai/api/retailer-restful-api#receive-tasks
 @app.route('/apis/tasks', methods=["POST"])
 def parse():
+    # https://flask.palletsprojects.com/en/1.1.x/api/#flask.Request.get_json
     returnTasks = request.get_json()
     tasks = []
     # crawled blogs
     crawledBlogs = []
     targetBaseURL = "http://exampleblog.bitsky.ai"
     for i in range(len(returnTasks)):
+        # Schema of Task: https://raw.githubusercontent.com/bitskyai/bitsky-supplier/develop/src/schemas/task.json
         task = returnTasks[i]
         htmlString = task['dataset']['data']['content']
         type = task['metadata']['type']
+        # You can find how to use Beautiful Soap from https://www.crummy.com/software/BeautifulSoup/bs4/doc/#
+        # Beautiful Soup: A Python library for pulling data out of HTML and XML files
         soup = BeautifulSoup(htmlString, 'html.parser')
         if type == 'bloglist':
+            # If task type is **bloglist**, then need to get blog link 
+            # Get more detail from https://docs.bitsky.ai/tutorials/crawl-example-blog#crawl-each-blog-list-page-and-get-blogs-link
             blogUrls = soup.select("div.post-preview a")
             for j in range(len(blogUrls)):
                 blog = blogUrls[j]
                 blogURL = blog.get('href')
-                blogURL = f'{targetBaseURL}{blogURL}'
+                # Get blog page link, don't forget to add Base URL
+                blogURL = urljoin(targetBaseURL, blogURL)
+                # Add Task to crawl blog page
                 tasks.append({
                     'url': blogURL,
+                    # Set `priority` to `2`, so we can first crawl all blog list page, then crawl all blogs
                     'priority': 2,
                     'retailer': {
                         'globalId': GLOBAL_ID
                     },
                     'metadata': {
+                        # Add `type: "blog"` to indicate this task is for crawl blog
                         'type': "blog"
                     }
                 })
+            # Get next blog list page link. https://docs.bitsky.ai/tutorials/crawl-example-blog#crawl-each-blog-list-page-and-get-blogs-link
             nextURL = soup.select("ul.pager li.next a")
             if len(nextURL):
                 nextURL = nextURL[0]
                 nextURL = nextURL.get('href')
-                nextURL = f'{targetBaseURL}{nextURL}'
+                nextURL = urljoin(targetBaseURL, nextURL)
+                # If it has next blog list page, then create a Task to crawl Next Blog List page
                 tasks.append({
                     'url': nextURL,
+                    # blog list page is highest priority
                     'priority': 1,
                     'retailer': {
                         'globalId': GLOBAL_ID
                     },
                     'metadata': {
+                        # indicate this task is for crawl blog list page
                         'type': "bloglist",
+                        # Just to show you how to execute JavaScript in the browser
                         'script': '''
                             async function customFunction() {
                                 await $$page.waitFor(5 * 1000);
@@ -112,6 +154,7 @@ def parse():
                 })
 
         elif type == 'blog':
+            # If it is blog page, then crawl data and save to blogs.csv
             crawledBlogs.append({
                 'title': soup.select("div.post-heading h1")[0].get_text(),
                 'author': soup.select("div.post-heading p.meta span.author")[0].get_text(),
@@ -123,29 +166,19 @@ def parse():
         else:
             print('unknown type')
 
-    sendToBitSky(tasks)
-    writeToBlogCSV(crawledBlogs)
+    # Send Tasks that need to be executed to BitSky
+    if len(tasks):
+        sendToBitSky(tasks)
+    # Save crawled data to 
+    if len(crawledBlogs):
+        writeToBlogCSV(crawledBlogs)
     return 'successful'
 
-# Implement Initial Tasks RESTFul API
-# Doc - https://docs.bitsky.ai/api/retailer-restful-api#initial-tasks-optional
-@app.route('/apis/tasks/trigger', methods=['GET'])
-def trigger():
-    return sendToBitSky([{
-        'url': "http://exampleblog.bitsky.ai/",
-        'priority': 1,
-        'retailer': {
-            'globalId': GLOBAL_ID
-        },
-        'metadata': {
-            'type': "bloglist",
-            'script': '''
-                async function customFunction() {
-                    await $$page.waitFor(5 * 1000);
-                }
-            '''
-        }
-    }])
+# Implement health check RESTFul API
+# Doc - https://docs.bitsky.ai/api/retailer-restful-api#health-check
+@app.route('/health', methods=['GET'])
+def health():
+    return 'running'
 
 # Implement a index page, help user to know trigger function and crawled data
 @app.route('/', methods=['GET'])
